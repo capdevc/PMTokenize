@@ -55,6 +55,8 @@ object PMWordCount {
     // Only MongoOutputFormat and config are relevant
     saveRDD.saveAsNewAPIHadoopFile("file:///bogus", classOf[Any], classOf[Any], classOf[MongoOutputFormat[Any, Any]], config)
 
+    sc.stop()
+    
     // print how many we had to skip
     println("Task done, skipped " + badEntries.value.toString + " entries.")
   }
