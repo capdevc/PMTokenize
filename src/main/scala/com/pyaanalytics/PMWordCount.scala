@@ -1,5 +1,6 @@
 package com.pyaanalytics
 
+import com.mongodb.hadoop.{MongoInputFormat, MongoOutputFormat}
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.hadoop.conf.Configuration
@@ -17,7 +18,7 @@ object PMWordCount {
     config.set("mongo.input.uri", "mongodb://127.0.0.1:27017/pubmedtest.pubmedtestcol")
     config.set("mongo.output.uri", "mongodb://127.0.0.1:27017/pubmedtest.wordcount")
 
-    val mongoRDD = sc.newAPIHadoopRDD(config, classOf[com.mongodb.hadoop.MongoInputFormat], classOf[Object], classOf[BSONObject])
+    val mongoRDD = sc.newAPIHadoopRDD(config, classOf[MongoInputFormat], classOf[Object], classOf[BSONObject])
 
     // path is the path in the json tree to get the item we want
     val path = List("MedlineCitation", "Article", "Abstract", "AbstractText")
@@ -52,7 +53,7 @@ object PMWordCount {
     })
     
     // Only MongoOutputFormat and config are relevant
-    saveRDD.saveAsNewAPIHadoopFile("file:///bogus", classOf[Any], classOf[Any], classOf[com.mongodb.hadoop.MongoOutputFormat[Any, Any]], config)
+    saveRDD.saveAsNewAPIHadoopFile("file:///bogus", classOf[Any], classOf[Any], classOf[MongoOutputFormat[Any, Any]], config)
 
     // print how many we had to skip
     println("Task done, skipped " + badEntries.value.toString + " entries.")
