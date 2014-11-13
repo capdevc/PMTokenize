@@ -1,21 +1,17 @@
 package com.pyaanalytics
 
-import com.mongodb.hadoop.{ MongoInputFormat, MongoOutputFormat }
+import com.mongodb.hadoop.{MongoInputFormat, MongoOutputFormat}
 import com.mongodb.hadoop.io.MongoUpdateWritable
-import com.novus.salat._
-import com.novus.salat.annotations._
-import com.novus.salat.global._
+import epic.preprocess
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
-import org.apache.hadoop.conf.Configuration
-import org.bson.{ BasicBSONEncoder, BasicBSONObject, BSONObject }
-import org.bson.types.ObjectId
-import epic.preprocess
+import org.bson.{BSONObject, BasicBSONObject}
 import rapture.core._
-import modes.returnTry
+import rapture.core.modes.returnTry
 import rapture.json._
 import rapture.json.jsonBackends.json4s._
-import scala.util.{ Try, Success, Failure }
+import scala.util.{Success, Try}
 
 object PMTokenize {
 
@@ -55,8 +51,10 @@ object PMTokenize {
         }
     })
 
+    // Generate a count to see how many abstracts we found
     val abstractCount = tokensRDD.count()
 
+    // Perform the actual write to MongoDB
     tokensRDD.saveAsNewAPIHadoopFile(
       "file:///bogus",
       classOf[Any],

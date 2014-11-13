@@ -1,4 +1,6 @@
-A small project to learn spark + mongo
+Uses epic to tokenize pubmed abstracts stored in MongoDB via Spark.
+
+JSON parsing via rapture + json4s.
 
 requires the mongo hadoop connector: https://github.com/mongodb/mongo-hadoop/
 
