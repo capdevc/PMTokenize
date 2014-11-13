@@ -1,34 +1,42 @@
 package com.pyaanalytics
 
 import com.mongodb.hadoop.{ MongoInputFormat, MongoOutputFormat }
+import com.mongodb.hadoop.io.MongoUpdateWritable
+import com.novus.salat._
+import com.novus.salat.annotations._
+import com.novus.salat.global._
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.hadoop.conf.Configuration
 import org.bson.{ BasicBSONEncoder, BasicBSONObject, BSONObject }
+import org.bson.types.ObjectId
 import epic.preprocess
 import rapture.core._
 import modes.returnTry
 import rapture.json._
-import rapture.json.jsonBackends.jackson._
+import rapture.json.jsonBackends.json4s._
 import scala.util.{ Try, Success, Failure }
 
 object PMTokenize {
 
   def main(args: Array[String]) {
 
-    val sc = new SparkContext("local", "Pubmed Word Count")
+    val sc = new SparkContext("local", "Pubmed Tokenizer")
 
     val config = new Configuration()
     config.set("mongo.input.uri", "mongodb://10.250.1.31:27017/pubmedtest.pubmedtestcol")
-    config.set("mongo.output.uri", "mongodb://127.0.0.1:27017/pubmedtest.wordcount")
+    // output uri doesn't matter here since we're writing back to the same db.
+    config.set("mongo.output.uri", "mongodb://10.250.1.31:27017/pubmedtest.pubmedtestcol")
 
-    val mongoRDD = sc.newAPIHadoopRDD(config, classOf[MongoInputFormat], classOf[Object], classOf[BSONObject])
-    val encoder = new BasicBSONEncoder()
+    val mongoRDD = sc.newAPIHadoopRDD(
+      config,
+      classOf[MongoInputFormat],
+      classOf[Object],
+      classOf[BSONObject]
+    )
 
-    // MongoRDD contrains (ObjectId, BSONObject) tuples
-    val countsRDD = mongoRDD.flatMap(arg => {
-      // ugly way to handle this, but get on a non-existent key throws NPE
-      // also haven't quite figured out how to use try/catch as expression
+    // mongoRDD contains (ObjectId, BSONObject) tuples
+    val tokensRDD = mongoRDD.flatMap(arg => {
       val json = Json.parse(arg._2.toString) getOrElse Json("No Abstract")
       json
         .MedlineCitation
@@ -36,27 +44,28 @@ object PMTokenize {
         .Abstract
         .AbstractText
         .as[String] match {
-          case Success(textChunk) => Some(preprocess.preprocess(textChunk))
+          case Success(textChunk) => {
+            val tokens = preprocess.preprocess(textChunk).toArray map (_.toArray)
+            val query = new BasicBSONObject("_id", arg._1)
+            val update = new BasicBSONObject("$set", (new BasicBSONObject("AbstractTokens", tokens)))
+            val muw = new MongoUpdateWritable(query, update, false, true)
+            Some(null, muw)
+          }
           case _ => None
         }
-      // println(abstractText)
-      // str.toLowerCase().replaceAll("[.,!?\n]", " ")
-      // .map(word => (word, 1))
-      // .reduceByKey((a, b) => a + b)
+    })
 
-      // (null, BSONObject) tuples
-      /* 
-    val saveRDD = countsRDD.map((tuple) => {
-      var bson = new BasicBSONObject()
-      bson.put("word", tuple._1)
-      bson.put("count", tuple._2)
-      (null, bson)
-     */
-    }).count()
-    // Only MongoOutputFormat and config are relevant
-    // saveRDD.saveAsNewAPIHadoopFile("file:///bogus", classOf[Any], classOf[Any], classOf[MongoOutputFormat[Any, Any]], config)
+    val abstractCount = tokensRDD.count()
 
-    println("Processed " + countsRDD.toString + " abstracts.")
+    tokensRDD.saveAsNewAPIHadoopFile(
+      "file:///bogus",
+      classOf[Any],
+      classOf[Any],
+      classOf[MongoOutputFormat[Any, Any]],
+      config
+    )
+
+    println("Found and tokenized " + abstractCount + " abstracts.")
     sc.stop()
   }
 }

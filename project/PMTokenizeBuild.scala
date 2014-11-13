@@ -13,7 +13,8 @@ object PMWordCountBuild extends Build {
       scalaVersion := "2.10.4",
       // add other settings here
       libraryDependencies ++=  Seq(
-        "com.propensive" %% "rapture-json-jackson" % "1.0.6",
+        "com.novus" %% "salat" % "1.9.9",
+        "com.propensive" %% "rapture-json-json4s" % "1.0.6",
         "org.apache.spark" %% "spark-core" % "1.1.0",
         "org.apache.hadoop" % "hadoop-client" % "2.2.0",
         "org.scalanlp" %% "epic" % "0.2",
